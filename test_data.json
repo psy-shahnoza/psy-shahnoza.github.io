@@ -1,0 +1,57 @@
+test_raw_data = `[
+    {
+    "q_id":1,
+    "q_in_g":1,
+    "g_id":1,
+    "q_type":1,
+    "q_text":"У дерева всегда есть...",
+    "q_object":"",
+    "a_type": 1,
+    "answers": ["листья", "плоды", "почки", "корни", "тень"],
+    "correct_answer":4
+    },
+    {
+    "q_id":1,
+    "q_in_g":1,
+    "g_id":2,
+    "q_type":1,
+    "q_text":"Обед не может состояться без...",
+    "q_object":"",
+    "a_type": 1,
+    "answers": ["стола", "пищи", "сервиза", "воды", "голода"],
+    "correct_answer":2
+    },
+    {
+    "q_id":1,
+    "q_in_g":1,
+    "g_id":3,
+    "q_type":1,
+    "q_text":" Женщины ... бывают выше мужчин",
+    "q_object":"",
+    "a_type": 1,
+    "answers": ["всегда", "обычно", "часто", "иногда", "никогда"],
+    "correct_answer":4
+    },
+    {
+    "q_id":1,
+    "q_in_g":1,
+    "g_id":4,
+    "q_type":1,
+    "q_text":"Тетя ... бывает старше племянницы",
+    "q_object":"",
+    "a_type": 1,
+    "answers": ["почти всегда", "всегда", "редко", "никогда не", "обязательно"],
+    "correct_answer":1
+    },
+    {
+    "q_id":0,
+    "q_in_g":0,
+    "g_id":6,
+    "q_type":1,
+    "q_text":"this is a stub question to ensure correct behaviour",
+    "q_object":"",
+    "a_type": 0,
+    "answers": [],
+    "correct_answer":0
+    }
+    ]`;

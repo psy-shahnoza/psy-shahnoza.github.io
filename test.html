@@ -1,0 +1,829 @@
+
+<!DOCTYPE html>
+<!-- psych.test.msu@gmail.com p$ych123 -->
+<!-- PostMail token: 50a106csvf3zjn6aby1rrf1w  -->
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+<head>
+	<title>Тест интеллекта</title>
+    <link rel="stylesheet" href="style.css">
+	<script type="text/javascript" src="question_data.json"></script>
+<script type="text/javascript">
+	test_data = JSON.parse(test_raw_data);
+	q_id = 0;
+	q_group = 0;
+	first_in_group = true;
+
+	num_of_groups = 4;
+
+	// subject's personal info
+	s_name = "";
+	s_age = 0;
+	s_sex = "";
+
+	// subject's current result && current group q number
+	curr_result = 0;
+	curr_counter = 0;
+	// players all results and responces
+	results = [];
+	disp_results = [];
+	responces = [];
+	surveys = [];
+
+	// texts snippets for survey instructions
+	survey_t1 = ["в первой", "во второй", "в третьей", "в четвертой", "в пятой"];
+	survey_t2 = ["первой", "второй", "третьей", "четвертой", "пятой"];
+
+	// 0 - personal form, 1 - question form, 2 - result form, 3 - survey form
+	stage = 0;
+	// 0 - first increase, then decrease, 1 - otherwise
+	deception_type = 0;
+	deception_amnt = 3*60;
+
+	// time counter - resets when new series starts, clears when due or when series finished
+	time_limit = 10*60;
+	group_timer = null;
+	timer_counter = time_limit;
+
+	function timer_tick(){
+		timer_counter--;
+
+		if(timer_counter > 0){
+			// display timer counter
+			mins = Math.floor(timer_counter / 60);
+			secs = timer_counter % 60;
+
+			tmins = ""+mins;
+			if(mins<10){ tmins = "0"+tmins;}
+			tsecs = ""+secs;
+			if(secs<10){ tsecs = "0"+tsecs;}
+
+			document.getElementById("timer").innerHTML = tmins + " : " + tsecs;
+		}
+		else{
+			// timer expired
+			clearInterval(group_timer);
+			// fast-forward questions till the end of the current group
+			while((q_id < test_data.length) && (test_data[q_id]['g_id'] == q_group)){
+				q_id++;
+				responces.push(0);
+				curr_counter += 1;
+			}
+			stage = 2;
+			displayResultForm();
+		}
+
+	}
+
+	div_forms = ['personal_form', 'survey_form', 'question_form', 'result_form'];
+	function preparePage(){
+		stage = 0;
+		displayPersonalForm();
+
+		deception_type = (Math.random() < 0.5 ? 0 : 1);
+	}
+
+	function displayContent(divname){
+		for(i=0; i< div_forms.length; i++){
+			document.getElementById(div_forms[i]).style.display = "none";
+		}
+		document.getElementById(divname).style.display = "block";
+	}
+
+	function buttonClicked(){
+		switch(stage){
+			case 0:
+				if(!processPersonalForm()){
+					// display warning
+					return;
+				}
+				stage = 1;
+				q_id = 0;
+				q_group = 1;
+
+				displayNextQuestionForm();
+				break;
+			case 1:
+				if(!processQuestionForm()){
+					// display warning
+					return;
+				}
+				if((q_id >= test_data.length-1) || (test_data[q_id+1]['g_id'] != q_group)){
+					console.log(q_id + " " + q_group);
+					q_id++;
+					stage = 2;
+					displayResultForm();
+				}
+				else{
+					q_id++;
+					displayNextQuestionForm();
+				}
+				break;
+			case 2:
+				displaySurveyForm();
+				stage = 3;
+				break;
+			case 3:
+				if(!processSurveyForm()){
+					// display warning
+					return;
+				}
+				if(q_group == num_of_groups){
+					sendResults();
+				}
+				else{
+					curr_counter = 0;
+					curr_result = 0;
+					stage = 1;
+					q_group = q_group + 1;
+					displayNextQuestionForm();
+				}
+				break;
+		}
+	}
+
+	function displayPersonalForm(){
+		document.getElementById('name').value = ""
+		document.getElementById('age').value = ""
+
+		var ele = document.getElementsByName("group_sex");
+   		for(var i=0;i<ele.length;i++)
+      		ele[i].checked = false;
+
+		displayContent('personal_form');
+	}
+
+	function processPersonalForm(){
+		s_name = document.getElementById('name').value;
+		s_age = parseInt(document.getElementById('age').value);
+		if (s_name=="")
+			return false;
+		if  (isNaN(s_age))
+			return false;
+		x = document.getElementsByName("group_sex");
+		n_ch = 0;
+		for(j=0; j<x.length; j++){
+			if(x[j].checked)
+				n_ch++;
+		}
+		if(n_ch != 1)
+			return false;
+		s_sex = document.querySelector('input[name="group_sex"]:checked').value == 0? "male" : "female";
+
+		return true;
+	}
+
+	function sendResults(){
+
+		document.getElementById('submit_survey').innerHTML = "Отправляется..."
+		// prepare data
+		var emailBody = '';
+
+		// add subject's persona info
+		emailBody += s_name + '(' + s_age + ', ' + s_sex + ')\n';
+
+		// add subject's answers
+		emailBody += "Ответы:\n";
+		for(i = 0; i<responces.length; i++){
+			emailBody += (i+1).toString() + ":" + responces[i].toString() + ";";
+		}
+		emailBody += "\n";
+
+		// add subject's results/displayed results
+		emailBody += "Реальный результат/Отображенный результат:\n";
+		for(i = 0; i<results.length; i++){
+			emailBody += "После раунда " + (i+1).toString() + ": ";
+			emailBody += results[i].toString() + "/" + disp_results[i].toString() + "\n";
+		}
+		emailBody += "\n";
+
+		//add subjects survey answers
+		emailBody += "Ответы на опросник:\n";
+		for(i = 0; i<surveys.length; i++){
+			emailBody += "После раунда " + (i+1).toString() + ": ";
+			for(j=0; j<surveys[i].length; j++){
+				emailBody += surveys[i][j] + ",";
+			}
+			emailBody += "\n";
+		}
+		emailBody += "=======================конец данных=======================\n";
+
+		console.log(emailBody);
+		sendData(emailBody);
+	}
+
+	function processQuestionForm(){
+		// TODO: check if the form contains answers
+		switch(test_data[q_id]['a_type']){
+			case 1:
+			case 2:
+				n_ch = 0;
+				for(i=1; i<=5; i++){
+					if(document.getElementById('opt'+i).checked){
+						n_ch ++;
+					}
+				}
+				if(n_ch != 1)
+					return false;
+				var resp = parseInt(document.querySelector('input[name="answ_opt"]:checked').value);
+				responces.push(resp);
+				curr_result += (resp == test_data[q_id]['correct_answer'])?1:0;
+				curr_counter += 1;
+				break;
+			case 3:
+				if(document.getElementById('answ_input').value.legth == 0)
+					return false;
+				resp = parseInt(document.getElementById('answ_input').value);
+				if(isNaN(resp))
+					return false;
+				responces.push(resp);
+				curr_result += (resp == test_data[q_id]['correct_answer'])?1:0;
+				curr_counter += 1;
+				break;
+		}
+		return true;
+	}
+
+	function displayNextQuestionForm(){
+		// if first question in the group then start timer
+		if(first_in_group){
+			group_timer = setInterval(timer_tick, 1000);
+			first_in_group = false;
+		}
+
+		//clear all radio buttons
+		for(i=1; i<=5; i++){
+			document.getElementById("opt"+i.toString()).checked = false;
+		}
+
+		document.getElementById('g_header').innerHTML = "Серия " + test_data[q_id]['g_id'].toString();
+		document.getElementById('q_header').innerHTML = "Вопрос " + test_data[q_id]['q_in_g'].toString();
+		switch(test_data[q_id]['q_type']){
+			case 1:
+				document.getElementById('q_text').innerHTML = test_data[q_id]['q_text'];
+				if(test_data[q_id]['q_object'].length > 0){
+					qobj = '<br><h3>' + test_data[q_id]['q_object'] + '</h3>';
+					document.getElementById('q_text').innerHTML += qobj;
+				}
+				break;
+			case 2:
+				impath = '<br><img src="./imgs/' + test_data[q_id]['q_object'] + '" height=150><br>'
+				document.getElementById('q_text').innerHTML = test_data[q_id]['q_text'] + impath;
+				break;
+		}
+		switch(test_data[q_id]['a_type']){
+			case 1:
+				for(i = 1; i<=5; i++){
+					document.getElementById('a' + i).innerHTML = test_data[q_id]['answers'][i-1];
+				}
+				document.getElementById('answer_choice_block').style.display = "block";
+				document.getElementById('open_answer_block').style.display = "none";
+				break;
+			case 2:
+			for(i = 1; i<=5; i++){
+					impath = '<img src="./imgs/' + test_data[q_id]['answers'][i-1] + '" height=100>';
+					document.getElementById('a' + i).innerHTML = impath;
+				}
+				document.getElementById('answer_choice_block').style.display = "block";
+				document.getElementById('open_answer_block').style.display = "none";
+				break;
+			case 3:
+				document.getElementById('answ_input').value = "";
+				document.getElementById('answer_choice_block').style.display = "none";
+				document.getElementById('open_answer_block').style.display = "block";
+				break;
+		}
+
+		displayContent('question_form')
+	}
+
+	function displayResultForm(){
+		// clear timer if participant finished before due time  and reset first_in_group
+		if(group_timer != null){
+			clearInterval(group_timer);
+			first_in_group = true;
+			timer_counter = time_limit;
+            if(q_group == 1) {
+                timer_counter = time_limit + deception_amnt * (deception_type == 1 ? -1 : 1);
+            } else if(q_group == 3) {
+                timer_counter = time_limit + deception_amnt * (deception_type == 1 ? 1 : -1);
+            }
+		}
+
+		document.getElementById('r_g_header').innerHTML = "Серия " + q_group;
+
+		res_up = Math.min(curr_result+deception_amnt, curr_counter);
+		res_down = Math.max(curr_result-deception_amnt, 0);
+		switch(q_group){
+			case 2:
+				disp_result = deception_type==0 ? res_up : res_down;
+				break;
+			case 4:
+				disp_result = deception_type==1 ? res_up : res_down;
+				break;
+			default:
+				disp_result = curr_result;
+				break;
+		}
+		results.push(curr_result);
+		disp_results.push(disp_result);
+		document.getElementById('result_text').innerHTML = disp_result.toString() + ' из ' + curr_counter.toString();
+		displayContent('result_form');
+	}
+
+	function displaySurveyForm(){
+        let text_inputs = [1, 4, 7, 8]
+		for(j=1; j<=26; j++){
+			var ele = document.getElementsByName("group_s" + j.toString());
+            if(text_inputs.includes(j)) {
+                ele[0].value = ''
+                continue;
+            }
+   			for(var i=0;i<ele.length;i++)
+      			ele[i].checked = false;
+		}
+		// insert correct text into survey instructions
+		document.getElementById("survey_n_text1").innerHTML = survey_t1[q_group-1];
+		// document.getElementById("survey_n_text2").innerHTML = survey_t2[q_group-1];
+
+		displayContent('survey_form');
+	}
+
+	function processSurveyForm(){
+        let text_inputs = [1, 4, 7, 8]
+		for(i=1; i<=26; i++){
+			// checking of all questions were answered
+			x = document.getElementsByName("group_s"+i);
+			n_ch = 0;
+            if(text_inputs.includes(i)) {
+                if(x[0].value.length < 3)
+                    return false;
+            } else {
+                for(j=0; j<x.length; j++){
+                    if(x[j].checked)
+                        n_ch++;
+                }
+                if(n_ch != 1)
+                    return false;
+            }
+		}
+
+		survey_result = [];
+		for(i = 1; i<=26; i++){
+            if(text_inputs.includes(i)) {
+                survey_result.push(document.querySelector('input[name="group_s' + i.toString() +'"]').value);
+            } else {
+			    survey_result.push(document.querySelector('input[name="group_s' + i.toString() +'"]:checked').value);
+            }
+		}
+
+		surveys.push(survey_result);
+		return true;
+	}
+
+	function sendData(emailBody){
+		var data_js = {
+        "access_token": "dovujen0budaiw2lvu94a7p3" // sent after you sign up
+    	};
+
+    	var request = new XMLHttpRequest();
+        request.onreadystatechange = function() {
+            if (request.readyState == 4 && request.status == 200) {
+                js_onSuccess();
+            } else
+            if(request.readyState == 4) {
+                js_onError(request.response);
+            }
+        };
+
+        var subject = 'Test results';
+        var message = emailBody;
+        data_js['subject'] = subject;
+        data_js['text'] = message;
+        var params = toParams(data_js);
+
+        request.open("POST", "https://postmail.invotes.com/send", true);
+        request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+        request.send(params);
+	}
+
+	function toParams(data_js) {
+        var form_data = [];
+        for ( var key in data_js ) {
+            form_data.push(encodeURIComponent(key) + "=" + encodeURIComponent(data_js[key]));
+        }
+
+        return form_data.join("&");
+    }
+
+    function js_onSuccess() {
+        // remove this to avoid redirect
+        window.location.replace('./finish.html?' + formResultGetString());
+    }
+
+    function js_onError(error) {
+        // remove this to avoid redirect
+        window.location.replace('./finish.html?' + formResultGetString());
+    }
+
+    function formResultGetString(){
+    	s = "";
+    	for(i = 0; i<results.length; i++){
+			s += "r" + (i+1).toString() + "=" + results[i];
+			if(i<results.length-1){
+				s += "&";
+			}
+		}
+		return s;
+    }
+
+</script>
+</head>
+<html>
+<body onLoad="preparePage();">
+<center>
+<div style="width: 50%; color: red">
+	Не обновляйте страницу! При обновлении ваш результат будет потерян.<br> Если часть вопроса не отображается, попробуйте угадать ответ.
+</div>
+</center>
+<div class="page-canvas">
+	<div class="form-canvas" id="personal_form">
+		<h4>Перед началом исследования, пожалуйста, укажите сведения о себе:</h4>
+		<center>
+		<div style="width: 50%; text-align: left">
+			Ваш имя (псевдоним): <input type="text" id="name"><br>
+			Ваш возраст: <input type="text" id="age"><br>
+			Ваш пол: <input type="radio" value="0" name="group_sex"> мужской &nbsp;&nbsp; <input type="radio" value="1" name="group_sex"> женский <br>
+		</div>
+		</center>
+		<br>
+		<button onClick="buttonClicked();">Перейти к тесту</button>
+	</div>
+
+	<div class="form-canvas" id="survey_form">
+        Какие эмоции, ощущения вы испытываете после прохождения данной серии тестов?<br>
+        <input type="text" name="group_s1"><br><br>
+        
+        Какой эмоциональный оттенок несут в себе выше написанные<br>
+        <input type="radio" value="1" name="group_s2"> 1 - негативный (меня расстроил результат)<br>
+        <input type="radio" value="2" name="group_s2"> 2 - негативно – нейтральный (терпимо, я в состоянии сдерживать себя)<br>
+        <input type="radio" value="3" name="group_s2"> 3 - нейтральный (я вполне удовлетворён результатом)<br>
+        <input type="radio" value="4" name="group_s2">  4 - положительный <br><br>
+
+        Как сменилось ваше настроение после прохождения данной серии?<br>
+        <input type="radio" value="1" name="group_s3"> 1 - в отрицательную сторону<br>
+        <input type="radio" value="2" name="group_s3"> 2 - не изменилось<br>
+        <input type="radio" value="3" name="group_s3"> 3 - в положительную сторону<br><br>
+
+        Какой результат вы ожидали получить?<br>
+        <input type="text" name="group_s4"><br><br>
+
+        Насколько Вы удовлетворены результатом, полученным Вами <span id="survey_n_text1"></span> серии интеллектуальных заданий? Оцените от 1 до 10, где 1 – никак не удовлетворен(а), а 10 – полностью удовлетворен(а)<br><br>
+        <center>
+        <input type="radio" value="1" name="group_s5"> 1
+        <input type="radio" value="2" name="group_s5"> 2
+        <input type="radio" value="3" name="group_s5"> 3
+        <input type="radio" value="4" name="group_s5"> 4
+        <input type="radio" value="5" name="group_s5"> 5
+        <input type="radio" value="6" name="group_s5"> 6
+        <input type="radio" value="7" name="group_s5"> 7
+        <input type="radio" value="8" name="group_s5"> 8
+        <input type="radio" value="9" name="group_s5"> 9
+        <input type="radio" value="10" name="group_s5"> 10
+        </center><br><br>
+
+        Насколько вас удивил, набранный вами балл? Оцените от 1 до 10, где 1 – не удивил вообще, 10 – сильно удивил.<br><br>
+        <center>
+        <input type="radio" value="1" name="group_s6"> 1
+        <input type="radio" value="2" name="group_s6"> 2
+        <input type="radio" value="3" name="group_s6"> 3
+        <input type="radio" value="4" name="group_s6"> 4
+        <input type="radio" value="5" name="group_s6"> 5
+        <input type="radio" value="6" name="group_s6"> 6
+        <input type="radio" value="7" name="group_s6"> 7
+        <input type="radio" value="8" name="group_s6"> 8
+        <input type="radio" value="9" name="group_s6"> 9
+        <input type="radio" value="10" name="group_s6"> 10
+        </center>
+    <br><br>
+    Как вы считаете какие могут быть причины получения Вами такого результата за прохождение данной серии интеллектуальных заданий? (можете указать несколько причин)<br>
+    <input type="text" name="group_s7"><br><br>
+
+    Выберите одну из вышеперечисленных причин, и постарайтесь отнести ее к следующим утверждениям. (при желании Вы можете соотнести с нижеприведенными утверждениями все перечисленные причины, для этого Вам предоставляются дополнительные таблицы) <br>
+    Если выбранной Вами причине подходит утверждение слева, то выберите одну из трех цифр с левой стороны. Если выбранной Вами причине подходит утверждение справа, то выберите одну из трех цифр с правой стороны. Цифра 3 соответствует наибольшей выраженности качества, цифра 1 соответствует наименьшей выраженности качества. Если Вам не подходит ни утверждение справа, ни утверждение слева, то выберите цифру 0 (но постарайтесь не выбирать 0 часто). <br><br>
+    
+    Укажите причину, которую вы соотносите:
+    <input type="text" name="group_s8"><br><br>
+
+	<table border=1 width=75% align="center">
+		<tr>
+			<td></td>
+			<td>&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;</td>
+			<td>&nbsp;&nbsp;0&nbsp;&nbsp;</td>
+			<td>&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;</td>
+			<td></td>
+        </tr>
+        <tr>
+			<td>Относится к проявлениям моего внутреннего мира</td>
+			<td>
+				<input type="radio" value="-3" name="group_s9">
+			    <input type="radio" value="-2" name="group_s9">
+			 	<input type="radio" value="-1" name="group_s9">
+			</td>
+			<td> <input type="radio" value="0" name="group_s9"></td>
+			<td>
+				<input type="radio" value="1" name="group_s9">
+			    <input type="radio" value="2" name="group_s9">
+			    <input type="radio" value="3" name="group_s9">
+			</td>
+			<td>Она внешняя, связана с обстоятельствами</td>
+		</tr>
+		<tr>
+			<td>В зависимости от ситуации и обстоятельств причина может меняться</td>
+			<td>
+				<input type="radio" value="-3" name="group_s10">
+			    <input type="radio" value="-2" name="group_s10">
+			 	<input type="radio" value="-1" name="group_s10">
+			</td>
+			<td> <input type="radio" value="0" name="group_s10"></td>
+			<td>
+				<input type="radio" value="1" name="group_s10">
+			    <input type="radio" value="2" name="group_s10">
+			    <input type="radio" value="3" name="group_s10">
+			</td>
+			<td>Несмотря ни на что причина будет та же</td>
+		</tr>
+		<tr>
+			<td>Находится под моим контролем</td>
+			<td>
+				<input type="radio" value="-3" name="group_s11">
+			    <input type="radio" value="-2" name="group_s11">
+			 	<input type="radio" value="-1" name="group_s11">
+			</td>
+			<td> <input type="radio" value="0" name="group_s11"></td>
+			<td>
+				<input type="radio" value="1" name="group_s11">
+			    <input type="radio" value="2" name="group_s11">
+			    <input type="radio" value="3" name="group_s11">
+			</td>
+			<td>Не находится под моим контролем</td>
+		</tr>
+		<tr>
+			<td>Связана со мной</td>
+			<td>
+				<input type="radio" value="-3" name="group_s12">
+			    <input type="radio" value="-2" name="group_s12">
+			 	<input type="radio" value="-1" name="group_s12">
+			</td>
+			<td> <input type="radio" value="0" name="group_s12"></td>
+			<td>
+				<input type="radio" value="1" name="group_s12">
+			    <input type="radio" value="2" name="group_s12">
+			    <input type="radio" value="3" name="group_s12">
+			</td>
+			<td>Связана с ситуацией</td>
+		</tr>
+		<tr>
+			<td>Окружающие меня люди не могут изменять и влиять на неё</td>
+			<td>
+				<input type="radio" value="-3" name="group_s13">
+			    <input type="radio" value="-2" name="group_s13">
+			 	<input type="radio" value="-1" name="group_s13">
+			</td>
+			<td> <input type="radio" value="0" name="group_s13"></td>
+			<td>
+				<input type="radio" value="1" name="group_s13">
+			    <input type="radio" value="2" name="group_s13">
+			    <input type="radio" value="3" name="group_s13">
+			</td>
+			<td>Окружающие меня люди могут изменять и влиять на неё</td>
+		</tr>
+		<tr>
+			<td>Я ею управляю</td>
+			<td>
+				<input type="radio" value="-3" name="group_s14">
+			    <input type="radio" value="-2" name="group_s14">
+			 	<input type="radio" value="-1" name="group_s14">
+			</td>
+			<td> <input type="radio" value="0" name="group_s14"></td>
+			<td>
+				<input type="radio" value="1" name="group_s14">
+			    <input type="radio" value="2" name="group_s14">
+			    <input type="radio" value="3" name="group_s14">
+			</td>
+			<td>Я ею не управляю</td>
+		</tr>
+		<tr>
+			<td>Постоянная</td>
+			<td>
+				<input type="radio" value="-3" name="group_s15">
+			    <input type="radio" value="-2" name="group_s15">
+			 	<input type="radio" value="-1" name="group_s15">
+			</td>
+			<td> <input type="radio" value="0" name="group_s15"></td>
+			<td>
+				<input type="radio" value="1" name="group_s15">
+			    <input type="radio" value="2" name="group_s15">
+			    <input type="radio" value="3" name="group_s15">
+			</td>
+			<td>Временная</td>
+		</tr>
+		<tr>
+			<td>Я могу её регулировать</td>
+			<td>
+				<input type="radio" value="-3" name="group_s16">
+			    <input type="radio" value="-2" name="group_s16">
+			 	<input type="radio" value="-1" name="group_s16">
+			</td>
+			<td> <input type="radio" value="0" name="group_s16"></td>
+			<td>
+				<input type="radio" value="1" name="group_s16">
+			    <input type="radio" value="2" name="group_s16">
+			    <input type="radio" value="3" name="group_s16">
+			</td>
+			<td>Я не могу её регулировать</td>
+		</tr>
+		<tr>
+			<td>Её контролируют другие люди</td>
+			<td>
+				<input type="radio" value="-3" name="group_s17">
+			    <input type="radio" value="-2" name="group_s17">
+			 	<input type="radio" value="-1" name="group_s17">
+			</td>
+			<td> <input type="radio" value="0" name="group_s17"></td>
+			<td>
+				<input type="radio" value="1" name="group_s17">
+			    <input type="radio" value="2" name="group_s17">
+			    <input type="radio" value="3" name="group_s17">
+			</td>
+			<td>Другие люди её не контролируют</td>
+		</tr>
+		<tr>
+			<td>Находится во мне</td>
+			<td>
+				<input type="radio" value="-3" name="group_s18">
+			    <input type="radio" value="-2" name="group_s18">
+			 	<input type="radio" value="-1" name="group_s18">
+			</td>
+			<td> <input type="radio" value="0" name="group_s18"></td>
+			<td>
+				<input type="radio" value="1" name="group_s18">
+			    <input type="radio" value="2" name="group_s18">
+			    <input type="radio" value="3" name="group_s18">
+			</td>
+			<td>Находится не во мне</td>
+		</tr>
+		<tr>
+			<td>Стабильная</td>
+			<td>
+				<input type="radio" value="-3" name="group_s19">
+			    <input type="radio" value="-2" name="group_s19">
+			 	<input type="radio" value="-1" name="group_s19">
+			</td>
+			<td> <input type="radio" value="0" name="group_s19"></td>
+			<td>
+				<input type="radio" value="1" name="group_s19">
+			    <input type="radio" value="2" name="group_s19">
+			    <input type="radio" value="3" name="group_s19">
+			</td>
+			<td>Изменчивая</td>
+		</tr>
+		<tr>
+			<td>Я не могу воздействовать и влиять на неё</td>
+			<td>
+				<input type="radio" value="-3" name="group_s20">
+			    <input type="radio" value="-2" name="group_s20">
+			 	<input type="radio" value="-1" name="group_s20">
+			</td>
+			<td> <input type="radio" value="0" name="group_s20"></td>
+			<td>
+				<input type="radio" value="1" name="group_s20">
+			    <input type="radio" value="2" name="group_s20">
+			    <input type="radio" value="3" name="group_s20">
+			</td>
+			<td>Я могу воздействовать и влиять на ней</td>
+		</tr>
+		<tr>
+			<td>Находится под властью других людей</td>
+			<td>
+				<input type="radio" value="-3" name="group_s21">
+			    <input type="radio" value="-2" name="group_s21">
+			 	<input type="radio" value="-1" name="group_s21">
+			</td>
+			<td> <input type="radio" value="0" name="group_s21"></td>
+			<td>
+				<input type="radio" value="1" name="group_s21">
+			    <input type="radio" value="2" name="group_s21">
+			    <input type="radio" value="3" name="group_s21">
+			</td>
+			<td>Не находится под властью других людей</td>
+		</tr>
+		<tr>
+			<td>Связана со мной</td>
+			<td>
+				<input type="radio" value="-3" name="group_s22">
+			    <input type="radio" value="-2" name="group_s22">
+			 	<input type="radio" value="-1" name="group_s22">
+			</td>
+			<td> <input type="radio" value="0" name="group_s22"></td>
+			<td>
+				<input type="radio" value="1" name="group_s22">
+			    <input type="radio" value="2" name="group_s22">
+			    <input type="radio" value="3" name="group_s22">
+			</td>
+			<td>Связана с другими людьми</td>
+		</tr>
+		<tr>
+			<td>Я уверен(а), что в будущем она останется такой же</td>
+			<td>
+				<input type="radio" value="-3" name="group_s23">
+			    <input type="radio" value="-2" name="group_s23">
+			 	<input type="radio" value="-1" name="group_s23">
+			</td>
+			<td> <input type="radio" value="0" name="group_s23"></td>
+			<td>
+				<input type="radio" value="1" name="group_s23">
+			    <input type="radio" value="2" name="group_s23">
+			    <input type="radio" value="3" name="group_s23">
+			</td>
+			<td>Я не уверен(а), что в будущем она останется такой же</td>
+		</tr>
+		<tr>
+			<td>У меня есть над ней власть </td>
+			<td>
+				<input type="radio" value="-3" name="group_s24">
+			    <input type="radio" value="-2" name="group_s24">
+			 	<input type="radio" value="-1" name="group_s24">
+			</td>
+			<td> <input type="radio" value="0" name="group_s24"></td>
+			<td>
+				<input type="radio" value="1" name="group_s24">
+			    <input type="radio" value="2" name="group_s24">
+			    <input type="radio" value="3" name="group_s24">
+			</td>
+			<td>У меня нет над ней власти</td>
+		</tr>
+		<tr>
+			<td>Может измениться</td>
+			<td>
+				<input type="radio" value="-3" name="group_s25">
+			    <input type="radio" value="-2" name="group_s25">
+			 	<input type="radio" value="-1" name="group_s25">
+			</td>
+			<td> <input type="radio" value="0" name="group_s25"></td>
+			<td>
+				<input type="radio" value="1" name="group_s25">
+			    <input type="radio" value="2" name="group_s25">
+			    <input type="radio" value="3" name="group_s25">
+			</td>
+			<td>Не может измениться</td>
+		</tr>
+		<tr>
+			<td>Другие люди могут е её регулировать</td>
+			<td>
+				<input type="radio" value="-3" name="group_s26">
+			    <input type="radio" value="-2" name="group_s26">
+			 	<input type="radio" value="-1" name="group_s26">
+			</td>
+			<td> <input type="radio" value="0" name="group_s26"></td>
+			<td>
+				<input type="radio" value="1" name="group_s26">
+			    <input type="radio" value="2" name="group_s26">
+			    <input type="radio" value="3" name="group_s26">
+			</td>
+			<td>Другие люди не могут её регулировать</td>
+		</tr>
+	</table>
+	<br><br>
+	<button onClick="buttonClicked();" id="submit_survey">Далее</button>
+	</div>
+
+	<div class="form-canvas" id="question_form">
+		<div id="timer_header" style="text-align: right; display: none;">
+			Осталось времени на тест:  <span id='timer'></span>
+		</div>
+		<h3 id="g_header"></h3>
+		<h3 id="q_header"></h3>
+		<br><br>
+		<span id="q_text"></span><br><br>
+		<div id="answer_choice_block">
+			<input type="radio" value="1" name="answ_opt" id="opt1"><span id="a1"></span><br>
+			<input type="radio" value="2" name="answ_opt" id="opt2"><span id="a2"></span><br>
+			<input type="radio" value="3" name="answ_opt" id="opt3"><span id="a3"></span><br>
+			<input type="radio" value="4" name="answ_opt" id="opt4"><span id="a4"></span><br>
+			<input type="radio" value="5" name="answ_opt" id="opt5"><span id="a5"></span><br>
+		</div>
+		<div id="open_answer_block">
+			Ответ: <input type="text" id="answ_input">
+		</div>
+		<br><button onClick="buttonClicked();">Далее</button>
+	</div>
+	<div class="form-canvas" id="result_form">
+		<h3 id="r_g_header"></h3>
+		<h3>Ваш результат:</h3>
+		<h1 id="result_text"></h1>
+		<br><button onClick="buttonClicked();">Далее</button>
+	</div>
+</div>
+</body>
+</html>
