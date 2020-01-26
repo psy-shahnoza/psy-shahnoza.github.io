@@ -266,7 +266,7 @@
 				}
 				break;
 			case 2:
-				impath = '<br><img src="./imgs/' + test_data[q_id]['q_object'] + '" height=150><br>'
+				impath = '<br><img src="./img/test/' + test_data[q_id]['q_object'] + '" height=150><br>'
 				document.getElementById('q_text').innerHTML = test_data[q_id]['q_text'] + impath;
 				break;
 		}
@@ -280,7 +280,7 @@
 				break;
 			case 2:
 			for(i = 1; i<=5; i++){
-					impath = '<img src="./imgs/' + test_data[q_id]['answers'][i-1] + '" height=100>';
+					impath = '<img src="./img/test/' + test_data[q_id]['answers'][i-1] + '" height=100>';
 					document.getElementById('a' + i).innerHTML = impath;
 				}
 				document.getElementById('answer_choice_block').style.display = "block";
@@ -355,7 +355,7 @@
 			x = document.getElementsByName("group_s"+i);
 			n_ch = 0;
             if(text_inputs.includes(i)) {
-                if(x[0].value.length < 3)
+                if(x[0].value.length < 1)
                     return false;
             } else {
                 for(j=0; j<x.length; j++){
@@ -438,6 +438,12 @@
     }
 
 </script>
+<style>
+	table.main tr td:nth-child(2), table.main tr td:nth-child(4) {
+		min-width: 76px;
+		word-break: keep-all;
+	}
+</style>
 </head>
 <html>
 <body onLoad="preparePage();">
@@ -515,7 +521,7 @@
     Укажите причину, которую вы соотносите:
     <input type="text" name="group_s8"><br><br>
 
-	<table border=1 width=75% align="center">
+	<table class="main" border=1 width=80% align="center">
 		<tr>
 			<td></td>
 			<td>&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;</td>
