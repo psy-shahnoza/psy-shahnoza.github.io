@@ -311,19 +311,20 @@
 
 		document.getElementById('r_g_header').innerHTML = "Серия " + q_group;
 
-		res_up = Math.min(curr_result+deception_amnt, curr_counter);
-		res_down = Math.max(curr_result-deception_amnt, 0);
-		switch(q_group){
-			case 2:
-				disp_result = deception_type==0 ? res_up : res_down;
-				break;
-			case 4:
-				disp_result = deception_type==1 ? res_up : res_down;
-				break;
-			default:
-				disp_result = curr_result;
-				break;
-		}
+		// res_up = Math.min(curr_result+deception_amnt, curr_counter);
+		// res_down = Math.max(curr_result-deception_amnt, 0);
+		// switch(q_group){
+		// 	case 2:
+		// 		disp_result = deception_type==0 ? res_up : res_down;
+		// 		break;
+		// 	case 4:
+		// 		disp_result = deception_type==1 ? res_up : res_down;
+		// 		break;
+		// 	default:
+		// 		disp_result = curr_result;
+		// 		break;
+		// }
+		disp_result = curr_result;
 		results.push(curr_result);
 		disp_results.push(disp_result);
 		document.getElementById('result_text').innerHTML = disp_result.toString() + ' из ' + curr_counter.toString();
